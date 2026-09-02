@@ -25,7 +25,7 @@
 <noscript><div style="padding:40px 24px;text-align:center;color:#7A2426">JavaScript is turned off. Turn it on in Settings → Safari to use Life Compass.</div></noscript>
 <div id="boot">
   <div style="font-size:22px;font-weight:700;color:#3C4A2E;letter-spacing:.5px">LIFE COMPASS</div>
-  <div style="margin-top:6px">Loading… <b>build 4</b></div>
+  <div style="margin-top:6px">Loading… <b>build 5</b></div>
   <div id="bootdetail" style="margin-top:10px;font-size:12px;color:#A8A496"></div>
 </div>
 
@@ -36,12 +36,26 @@ const { useState, useEffect, useCallback, useRef } = React;
 const { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } = Recharts;
 /* Lucide icons rendered from the UMD icon data, same API as lucide-react. */
 function makeIcon(name) {
-    return function LucideIcon({ size = 24, color = "currentColor", strokeWidth = 2, style, className }) {
-        const node = (window.lucide && window.lucide.icons && window.lucide.icons[name]) || [];
+    return function LucideIcon(props) {
+        props = props || {};
+        var size = props.size == null ? 24 : props.size;
+        var color = props.color || "currentColor";
+        var sw = props.strokeWidth == null ? 2 : props.strokeWidth;
+        var kids = [];
+        try {
+            var raw = window.lucide && window.lucide.icons && window.lucide.icons[name];
+            var nodes = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.children) ? raw.children : []);
+            for (var i = 0; i < nodes.length; i++) {
+                var c = nodes[i];
+                if (!Array.isArray(c) || typeof c[0] !== "string") continue;
+                kids.push(React.createElement(c[0], Object.assign({ key: i }, c[1] || {})));
+            }
+        } catch (e) { kids = []; }
         return React.createElement("svg", {
             width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: color,
-            strokeWidth, strokeLinecap: "round", strokeLinejoin: "round", style, className,
-        }, node.map((child, i) => React.createElement(child[0], Object.assign({ key: i }, child[1]))));
+            strokeWidth: sw, strokeLinecap: "round", strokeLinejoin: "round",
+            style: props.style, className: props.className,
+        }, kids);
     };
 }
 const LayoutDashboard = makeIcon("LayoutDashboard"), MessagesSquare = makeIcon("MessagesSquare"), FolderKanban = makeIcon("FolderKanban"), Target = makeIcon("Target"), ClipboardList = makeIcon("ClipboardList"), ChevronRight = makeIcon("ChevronRight"), ChevronLeft = makeIcon("ChevronLeft"), ChevronDown = makeIcon("ChevronDown"), Download = makeIcon("Download"), Plus = makeIcon("Plus"), X = makeIcon("X"), Check = makeIcon("Check"), Sun = makeIcon("Sun"), Moon = makeIcon("Moon"), Flag = makeIcon("Flag"), Sparkles = makeIcon("Sparkles"), ArrowRight = makeIcon("ArrowRight"), Trash2 = makeIcon("Trash2"), Repeat = makeIcon("Repeat"), Minus = makeIcon("Minus"), AlertTriangle = makeIcon("TriangleAlert"), BarChart3 = makeIcon("ChartColumn"), Unlink = makeIcon("Unlink"), Compass = makeIcon("Compass"), ListChecks = makeIcon("ListChecks"), CalendarClock = makeIcon("CalendarClock"), Link2 = makeIcon("Link2"), BookOpen = makeIcon("BookOpen");
@@ -2719,7 +2733,20 @@ function LifeCompassApp() {
         }))));
 }
 const { useState: _us } = React;
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(LifeCompassApp));
+class AppErrorBoundary extends React.Component {
+    constructor(p) { super(p); this.state = { err: null }; }
+    static getDerivedStateFromError(err) { return { err: err }; }
+    render() {
+        if (this.state.err) {
+            var msg = String((this.state.err && (this.state.err.stack || this.state.err.message)) || this.state.err).slice(0, 700);
+            return React.createElement("div", { style: { padding: "40px 22px", textAlign: "center", fontFamily: "system-ui" } },
+                React.createElement("div", { style: { color: "#7A2426", fontWeight: 700, fontSize: 16 } }, "The app hit an error."),
+                React.createElement("div", { style: { marginTop: 12, fontSize: 11, color: "#6B6B63", whiteSpace: "pre-wrap", textAlign: "left" } }, msg));
+        }
+        return this.props.children;
+    }
+}
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(AppErrorBoundary, null, React.createElement(LifeCompassApp)));
 
 
 };
