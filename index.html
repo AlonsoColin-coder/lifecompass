@@ -25,7 +25,7 @@
 <noscript><div style="padding:40px 24px;text-align:center;color:#7A2426">JavaScript is turned off. Turn it on in Settings → Safari to use Life Compass.</div></noscript>
 <div id="boot">
   <div style="font-size:22px;font-weight:700;color:#3C4A2E;letter-spacing:.5px">LIFE COMPASS</div>
-  <div style="margin-top:6px">Loading… <b>build 5</b></div>
+  <div style="margin-top:6px">Loading… <b>build 6</b></div>
   <div id="bootdetail" style="margin-top:10px;font-size:12px;color:#A8A496"></div>
 </div>
 
@@ -43,7 +43,9 @@ function makeIcon(name) {
         var sw = props.strokeWidth == null ? 2 : props.strokeWidth;
         var kids = [];
         try {
-            var raw = window.lucide && window.lucide.icons && window.lucide.icons[name];
+            var L = window.lucide || {};
+            var kebab = name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
+            var raw = (L.icons && (L.icons[name] || L.icons[kebab])) || L[name] || L[kebab];
             var nodes = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.children) ? raw.children : []);
             for (var i = 0; i < nodes.length; i++) {
                 var c = nodes[i];
@@ -2698,9 +2700,9 @@ function LifeCompassApp() {
     if (!loaded) {
         return React.createElement("div", { className: "p-6 text-center text-[13px]", style: { color: TEXT_MUTED, fontFamily: FONT_BODY } }, "Loading Life Compass...");
     }
-    return (React.createElement("div", { style: { maxWidth: 430, margin: "0 auto", fontFamily: FONT_BODY, background: BG } },
+    return (React.createElement("div", { style: { maxWidth: 430, margin: "0 auto", fontFamily: FONT_BODY, background: BG, height: "100dvh", display: "flex", flexDirection: "column", overflow: "hidden" } },
         React.createElement("style", null, FONT_IMPORT),
-        React.createElement("div", { style: { background: OLIVE }, className: "px-4 py-3.5 flex items-center justify-between sticky top-0 z-10" },
+        React.createElement("div", { style: { background: OLIVE, flexShrink: 0 }, className: "px-4 py-3.5 flex items-center justify-between" },
             React.createElement("div", null,
                 React.createElement("div", { className: "text-white text-[15px] font-bold tracking-wide", style: { fontFamily: FONT_DISPLAY } }, "LIFE COMPASS"),
                 React.createElement("div", { className: "text-[10.5px]", style: { color: "#C8BE97", fontFamily: FONT_BODY } },
@@ -2712,7 +2714,7 @@ function LifeCompassApp() {
                     fmtDateShort(weekMeta.sunday))),
             React.createElement("button", { onClick: () => downloadText(`life-compass-week-${weekMeta.num}.txt`, buildExportText(week, weekMeta, objectives, projects, habits)), className: "p-2.5 rounded-full", style: { background: "rgba(255,255,255,0.15)" }, "aria-label": "Export week" },
                 React.createElement(Download, { size: 16, color: "#fff" }))),
-        React.createElement("div", { className: "px-3.5 pt-4", style: { minHeight: 400 } },
+        React.createElement("div", { className: "px-3.5 pt-4", style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" } },
             React.createElement("div", { style: { display: tab === "today" ? "block" : "none" } },
                 React.createElement(TodayView, { week: week, weekMeta: weekMeta, todayName: validToday, updateWeek: updateWeek, objectives: objectives, allWeeks: mergedWeeksForLog, logStatus: logStatus, setLogStatus: setLogStatus })),
             React.createElement("div", { style: { display: tab === "week" ? "block" : "none" } },
@@ -2723,7 +2725,7 @@ function LifeCompassApp() {
                 React.createElement(LogView, { allWeeks: mergedWeeksForLog, weekMeta: weekMeta, logStatus: logStatus, setLogStatus: setLogStatus, objectives: objectives, setObjectives: setObjectivesState, projects: projects, setProjects: setProjectsState, habits: habits, setHabits: setHabitsState, updateAnyWeek: updateAnyWeek })),
             React.createElement("div", { style: { display: tab === "reflect" ? "block" : "none" } },
                 React.createElement(ReflectView, { objectives: objectives, projects: projects, habits: habits, allWeeks: mergedWeeksForLog, weekIndex: weekIndex, logStatus: logStatus }))),
-        React.createElement("div", { className: "flex sticky bottom-0 border-t pb-1 pt-1", style: { background: SURFACE, borderColor: BORDER } }, TABS.map((t) => {
+        React.createElement("div", { className: "flex border-t pb-1 pt-1", style: { background: SURFACE, borderColor: BORDER, flexShrink: 0, paddingBottom: "calc(0.25rem + env(safe-area-inset-bottom))" } }, TABS.map((t) => {
             const Icon = t.icon;
             const active = tab === t.key;
             return (React.createElement("button", { key: t.key, onClick: () => setTab(t.key), className: "flex-1 flex flex-col items-center gap-1 py-1.5" },
