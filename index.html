@@ -16,7 +16,8 @@
 <style>
   html, body { margin:0; padding:0; background:#F7F5EC; -webkit-text-size-adjust:100%;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
-  body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+  html, body { position:fixed; top:0; left:0; right:0; bottom:0; height:100%; width:100%; overflow:hidden; overscroll-behavior:none; }
+  #root { height:100%; }
   * { -webkit-tap-highlight-color: transparent; }
   input, textarea, select { font-size:16px; }
   #boot { padding:48px 24px; text-align:center; color:#6B6B63; font-size:14px; line-height:1.6; }
@@ -29,7 +30,7 @@
 <noscript><div style="padding:40px 24px;text-align:center;color:#7A2426">JavaScript is turned off. Turn it on in Settings → Safari to use Life Compass.</div></noscript>
 <div id="boot">
   <div style="font-size:22px;font-weight:700;color:#3C4A2E;letter-spacing:.5px">LIFE COMPASS</div>
-  <div style="margin-top:6px">Loading… <b>build 11</b></div>
+  <div style="margin-top:6px">Loading… <b>build 12</b></div>
   <div id="bootdetail" style="margin-top:10px;font-size:12px;color:#A8A496"></div>
 </div>
 
@@ -2792,9 +2793,9 @@ function LifeCompassApp() {
     if (!loaded) {
         return React.createElement("div", { className: "p-6 text-center text-[13px]", style: { color: TEXT_MUTED, fontFamily: FONT_BODY } }, "Loading Life Compass...");
     }
-    return (React.createElement("div", { style: { maxWidth: 430, margin: "0 auto", fontFamily: FONT_BODY, background: BG, height: "100dvh", display: "flex", flexDirection: "column", overflow: "hidden" } },
+    return (React.createElement("div", { style: { maxWidth: 430, margin: "0 auto", fontFamily: FONT_BODY, background: BG, height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" } },
         React.createElement("style", null, FONT_IMPORT),
-        React.createElement("div", { style: { background: OLIVE, flexShrink: 0 }, className: "px-4 py-3.5 flex items-center justify-between" },
+        React.createElement("div", { style: { background: OLIVE, flexShrink: 0, paddingTop: "calc(0.875rem + env(safe-area-inset-top))" }, className: "px-4 py-3.5 flex items-center justify-between" },
             React.createElement("div", null,
                 React.createElement("div", { className: "text-white text-[15px] font-bold tracking-wide", style: { fontFamily: FONT_DISPLAY } }, "LIFE COMPASS"),
                 React.createElement("div", { className: "text-[10.5px]", style: { color: "#C8BE97", fontFamily: FONT_BODY } },
@@ -2806,7 +2807,7 @@ function LifeCompassApp() {
                     fmtDateShort(weekMeta.sunday))),
             React.createElement("button", { onClick: () => downloadText(`life-compass-week-${weekMeta.num}.txt`, buildExportText(week, weekMeta, objectives, projects, habits)), className: "p-2.5 rounded-full", style: { background: "rgba(255,255,255,0.15)" }, "aria-label": "Export week" },
                 React.createElement(Download, { size: 16, color: "#fff" }))),
-        React.createElement("div", { className: "px-3.5 pt-4", style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" } },
+        React.createElement("div", { className: "px-3.5 pt-4", style: { flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" } },
             React.createElement("div", { style: { display: tab === "today" ? "block" : "none" } },
                 React.createElement(TodayView, { week: week, weekMeta: weekMeta, todayName: validToday, updateWeek: updateWeek, objectives: objectives, allWeeks: mergedWeeksForLog, logStatus: logStatus, setLogStatus: setLogStatus })),
             React.createElement("div", { style: { display: tab === "week" ? "block" : "none" } },
