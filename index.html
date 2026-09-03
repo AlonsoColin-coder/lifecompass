@@ -25,7 +25,7 @@
 <noscript><div style="padding:40px 24px;text-align:center;color:#7A2426">JavaScript is turned off. Turn it on in Settings → Safari to use Life Compass.</div></noscript>
 <div id="boot">
   <div style="font-size:22px;font-weight:700;color:#3C4A2E;letter-spacing:.5px">LIFE COMPASS</div>
-  <div style="margin-top:6px">Loading… <b>build 8</b></div>
+  <div style="margin-top:6px">Loading… <b>build 9</b></div>
   <div id="bootdetail" style="margin-top:10px;font-size:12px;color:#A8A496"></div>
 </div>
 
@@ -501,39 +501,46 @@ function Card({ children, className = "", onClick, style, swipeDelete, swipeLabe
     return React.createElement(SwipeToDelete, { onDelete: swipeDelete, label: swipeLabel, className: className }, base);
 }
 
-/* Swipe a card left to reveal a delete panel. Vertical drags are ignored so
-   the list still scrolls normally. */
+/* Swipe a card left to reveal a delete panel. The row is moved directly via
+   its DOM node during the drag (no re-render lag), and touch-action pan-y
+   tells iOS to let horizontal gestures through while keeping vertical scroll. */
 function SwipeToDelete({ children, onDelete, label, className }) {
-    var _a = useState(0), dx = _a[0], setDx = _a[1];
-    var _b = useState(false), dragging = _b[0], setDragging = _b[1];
-    var st = useRef({ x: 0, y: 0, axis: null, active: false });
     var PANEL = 92;
+    var rowRef = useRef(null);
+    var st = useRef({ x: 0, y: 0, axis: null, active: false, base: 0, cur: 0 });
+    function setX(v, animate) {
+        st.current.cur = v;
+        var n = rowRef.current;
+        if (!n) return;
+        n.style.transition = animate ? "transform .18s ease" : "none";
+        n.style.transform = "translateX(-" + v + "px)";
+    }
     function onStart(e) {
         var t = e.touches ? e.touches[0] : e;
-        st.current = { x: t.clientX, y: t.clientY, axis: null, active: true };
-        setDragging(true);
+        st.current.x = t.clientX; st.current.y = t.clientY;
+        st.current.axis = null; st.current.active = true;
+        st.current.base = st.current.cur;
     }
     function onMove(e) {
         if (!st.current.active) return;
         var t = e.touches ? e.touches[0] : e;
         var mx = t.clientX - st.current.x, my = t.clientY - st.current.y;
         if (!st.current.axis) {
-            if (Math.abs(mx) < 6 && Math.abs(my) < 6) return;
+            if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
             st.current.axis = Math.abs(mx) > Math.abs(my) ? "x" : "y";
         }
         if (st.current.axis !== "x") return;
-        var next = (dx > 0 ? PANEL : 0) - mx;
-        setDx(Math.max(0, Math.min(PANEL, next)));
+        setX(Math.max(0, Math.min(PANEL, st.current.base - mx)), false);
     }
     function onEnd() {
         if (!st.current.active) return;
         st.current.active = false;
-        setDragging(false);
-        setDx(function (v) { return v > PANEL / 2 ? PANEL : 0; });
+        setX(st.current.cur > PANEL / 2 ? PANEL : 0, true);
     }
     return React.createElement("div", { className: className, style: { position: "relative", overflow: "hidden", borderRadius: 16 } },
         React.createElement("button", {
-            onClick: function () { onDelete(); setDx(0); },
+            "aria-label": label || "Delete",
+            onClick: function () { onDelete(); setX(0, true); },
             style: {
                 position: "absolute", right: 0, top: 0, bottom: 0, width: PANEL, background: RED,
                 color: "#fff", display: "flex", flexDirection: "column", alignItems: "center",
@@ -541,12 +548,13 @@ function SwipeToDelete({ children, onDelete, label, className }) {
             },
         }, React.createElement(Trash2, { size: 17, color: "#fff" }), label || "Delete"),
         React.createElement("div", {
+            ref: rowRef,
             onTouchStart: onStart, onTouchMove: onMove, onTouchEnd: onEnd, onTouchCancel: onEnd,
-            onClickCapture: function (e) { if (dx > 4) { e.stopPropagation(); e.preventDefault(); setDx(0); } },
+            onMouseDown: onStart, onMouseMove: onMove, onMouseUp: onEnd, onMouseLeave: onEnd,
+            onClickCapture: function (e) { if (st.current.cur > 4) { e.stopPropagation(); e.preventDefault(); setX(0, true); } },
             style: {
-                transform: "translateX(-" + dx + "px)",
-                transition: dragging ? "none" : "transform .18s ease",
                 position: "relative", background: SURFACE, borderRadius: 16,
+                touchAction: "pan-y", willChange: "transform",
             },
         }, children));
 }
