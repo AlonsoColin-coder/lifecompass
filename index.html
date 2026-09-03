@@ -25,7 +25,7 @@
 <noscript><div style="padding:40px 24px;text-align:center;color:#7A2426">JavaScript is turned off. Turn it on in Settings → Safari to use Life Compass.</div></noscript>
 <div id="boot">
   <div style="font-size:22px;font-weight:700;color:#3C4A2E;letter-spacing:.5px">LIFE COMPASS</div>
-  <div style="margin-top:6px">Loading… <b>build 7</b></div>
+  <div style="margin-top:6px">Loading… <b>build 8</b></div>
   <div id="bootdetail" style="margin-top:10px;font-size:12px;color:#A8A496"></div>
 </div>
 
@@ -491,8 +491,64 @@ function updateActionFields(action, patch, updateAnyWeek) {
 function Dot({ status, size = 10 }) {
     return React.createElement("span", { style: { display: "inline-block", width: size, height: size, borderRadius: "50%", background: dotColor(status), flexShrink: 0 } });
 }
-function Card({ children, className = "", onClick }) {
-    return (React.createElement("div", { onClick: onClick, className: `rounded-2xl overflow-hidden ${onClick ? "active:scale-[0.99]" : ""} ${className}`, style: { background: SURFACE, boxShadow: "0 1px 3px rgba(39,49,29,0.06)" } }, children));
+function Card({ children, className = "", onClick, style, swipeDelete, swipeLabel }) {
+    var base = React.createElement("div", {
+        onClick: onClick,
+        className: `rounded-2xl overflow-hidden ${onClick ? "active:scale-[0.99]" : ""} ${swipeDelete ? "" : className}`,
+        style: Object.assign({ background: SURFACE, boxShadow: "0 1px 3px rgba(39,49,29,0.06)" }, style || {}),
+    }, children);
+    if (!swipeDelete) return base;
+    return React.createElement(SwipeToDelete, { onDelete: swipeDelete, label: swipeLabel, className: className }, base);
+}
+
+/* Swipe a card left to reveal a delete panel. Vertical drags are ignored so
+   the list still scrolls normally. */
+function SwipeToDelete({ children, onDelete, label, className }) {
+    var _a = useState(0), dx = _a[0], setDx = _a[1];
+    var _b = useState(false), dragging = _b[0], setDragging = _b[1];
+    var st = useRef({ x: 0, y: 0, axis: null, active: false });
+    var PANEL = 92;
+    function onStart(e) {
+        var t = e.touches ? e.touches[0] : e;
+        st.current = { x: t.clientX, y: t.clientY, axis: null, active: true };
+        setDragging(true);
+    }
+    function onMove(e) {
+        if (!st.current.active) return;
+        var t = e.touches ? e.touches[0] : e;
+        var mx = t.clientX - st.current.x, my = t.clientY - st.current.y;
+        if (!st.current.axis) {
+            if (Math.abs(mx) < 6 && Math.abs(my) < 6) return;
+            st.current.axis = Math.abs(mx) > Math.abs(my) ? "x" : "y";
+        }
+        if (st.current.axis !== "x") return;
+        var next = (dx > 0 ? PANEL : 0) - mx;
+        setDx(Math.max(0, Math.min(PANEL, next)));
+    }
+    function onEnd() {
+        if (!st.current.active) return;
+        st.current.active = false;
+        setDragging(false);
+        setDx(function (v) { return v > PANEL / 2 ? PANEL : 0; });
+    }
+    return React.createElement("div", { className: className, style: { position: "relative", overflow: "hidden", borderRadius: 16 } },
+        React.createElement("button", {
+            onClick: function () { onDelete(); setDx(0); },
+            style: {
+                position: "absolute", right: 0, top: 0, bottom: 0, width: PANEL, background: RED,
+                color: "#fff", display: "flex", flexDirection: "column", alignItems: "center",
+                justifyContent: "center", gap: 4, fontFamily: FONT_DISPLAY, fontSize: 11, fontWeight: 600,
+            },
+        }, React.createElement(Trash2, { size: 17, color: "#fff" }), label || "Delete"),
+        React.createElement("div", {
+            onTouchStart: onStart, onTouchMove: onMove, onTouchEnd: onEnd, onTouchCancel: onEnd,
+            onClickCapture: function (e) { if (dx > 4) { e.stopPropagation(); e.preventDefault(); setDx(0); } },
+            style: {
+                transform: "translateX(-" + dx + "px)",
+                transition: dragging ? "none" : "transform .18s ease",
+                position: "relative", background: SURFACE, borderRadius: 16,
+            },
+        }, children));
 }
 function CardHeader({ icon: Icon, title, onClick, chevron }) {
     return (React.createElement("button", { onClick: onClick, disabled: !onClick, className: "w-full flex items-center justify-between px-4 pt-4 pb-2 text-left" },
@@ -1900,7 +1956,7 @@ function GoalsView({ objectives, setObjectives, projects, setProjects, habits, s
             g.items.map((o) => {
                 const lp = projectsForGoal(o.id, projects);
                 const lh = habitsForGoal(o.id, habits);
-                return (React.createElement(Card, { key: o.id, className: "mb-2", onClick: () => setOpenGoal(o.id) },
+                return (React.createElement(Card, { key: o.id, className: "mb-2", onClick: () => setOpenGoal(o.id), swipeLabel: "Delete goal", swipeDelete: () => { if (window.confirm("Delete this goal?\n\n" + o.desc.slice(0, 80))) setObjectives(objectives.filter((x) => x.id !== o.id)); } },
                     React.createElement("div", { className: "p-4" },
                         React.createElement("div", { className: "flex items-start justify-between gap-2 mb-1.5" },
                             React.createElement("div", { className: "flex items-center gap-1.5" },
@@ -1947,7 +2003,7 @@ function MissionsView({ projects, setProjects, habits, setHabits, objectives, al
             g.items.map((p) => {
                 var _a;
                 const goal = objectives.find((o) => o.id === p.linkedGoalId);
-                return (React.createElement(Card, { key: p.id, className: "mb-2", onClick: () => setOpenId(p.id) },
+                return (React.createElement(Card, { key: p.id, className: "mb-2", onClick: () => setOpenId(p.id), swipeLabel: "Delete mission", swipeDelete: () => { if (window.confirm("Delete this mission?\n\n" + p.name)) setProjects(projects.filter((x) => x.id !== p.id)); } },
                     React.createElement("div", { className: "p-4" },
                         React.createElement("div", { className: "flex items-center justify-between gap-2 mb-1.5" },
                             React.createElement("span", { className: "text-[13.5px] font-semibold", style: { color: OLIVE_DEEP, fontFamily: FONT_DISPLAY } }, p.name),
@@ -2005,7 +2061,7 @@ function DrillsView({ habits, setHabits, projects, objectives }) {
             g.items.map((h) => {
                 const goal = objectives.find((o) => o.id === h.linkedGoalId);
                 const mission = projects.find((p) => p.id === h.linkedProjectId);
-                return (React.createElement(Card, { key: h.id, className: "mb-2", onClick: () => setOpenId(h.id) },
+                return (React.createElement(Card, { key: h.id, className: "mb-2", onClick: () => setOpenId(h.id), swipeLabel: "Delete drill", swipeDelete: () => { if (window.confirm("Delete this drill?\n\n" + h.name)) setHabits(habits.filter((x) => x.id !== h.id)); } },
                     React.createElement("div", { className: "p-4" },
                         React.createElement("div", { className: "flex items-center justify-between gap-2 mb-1.5" },
                             React.createElement("span", { className: "text-[13.5px] font-semibold", style: { color: OLIVE_DEEP, fontFamily: FONT_DISPLAY } }, h.name),
