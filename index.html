@@ -19,7 +19,12 @@
   html, body { position:fixed; top:0; left:0; right:0; bottom:0; height:100%; width:100%; overflow:hidden; overscroll-behavior:none; }
   #root { height:100%; }
   * { -webkit-tap-highlight-color: transparent; }
-  input, textarea, select { font-size:16px; }
+  input, textarea, select { font-size:16px; box-sizing:border-box; max-width:100%; }
+  /* iOS gives date inputs an intrinsic width and centres the value, which
+     pushes them past the card edge — force them to behave like normal fields. */
+  input[type="date"] { width:100%; text-align:left; -webkit-appearance:none; appearance:none;
+    display:block; min-width:0; }
+  input[type="date"]::-webkit-date-and-time-value { text-align:left; }
   #boot { padding:48px 24px; text-align:center; color:#6B6B63; font-size:14px; line-height:1.6; }
   #boot .err { color:#7A2426; font-weight:600; }
   #boot code { font-size:11px; color:#8A887C; word-break:break-all; }
@@ -30,7 +35,7 @@
 <noscript><div style="padding:40px 24px;text-align:center;color:#7A2426">JavaScript is turned off. Turn it on in Settings → Safari to use Life Compass.</div></noscript>
 <div id="boot">
   <div style="font-size:22px;font-weight:700;color:#3C4A2E;letter-spacing:.5px">LIFE COMPASS</div>
-  <div style="margin-top:6px">Loading… <b>build 12</b></div>
+  <div style="margin-top:6px">Loading… <b>build 14</b></div>
   <div id="bootdetail" style="margin-top:10px;font-size:12px;color:#A8A496"></div>
 </div>
 
@@ -866,7 +871,7 @@ function CouncilView({ week, weekMeta, updateWeek, objectives, setObjectives, pr
             return;
         const id = "o" + Date.now();
         setObjectives([...objectives, { id, pillar: newGoal.pillar, status: "Active", priority: "Medium",
-                desc: newGoal.desc.trim(), start: newGoal.start || "", notes: "" }]);
+                desc: newGoal.desc.trim(), start: newGoal.start || "", end: newGoal.end || "", notes: "" }]);
         if (newGoalFor === "project") {
             setNewProj((np) => ({ ...np, goalId: id }));
         }
@@ -1229,7 +1234,7 @@ function GuidedWeeklyReview({ week, weekMeta, updateWeek, habits, objectives, se
             return;
         const id = "o" + Date.now();
         setObjectives([...objectives, { id, pillar: newGoal.pillar, status: "Active", priority: "Medium",
-                desc: newGoal.desc.trim(), start: newGoal.start || "", notes: "" }]);
+                desc: newGoal.desc.trim(), start: newGoal.start || "", end: newGoal.end || "", notes: "" }]);
         if (newGoalFor === "project") {
             setNewProj((np) => ({ ...np, goalId: id }));
         }
@@ -1706,7 +1711,7 @@ function MissionQuickCreate({ goalId, projects, setProjects, onDone, onCancel })
    Each mission is a segment placed by its real dates; tap one for detail.
    A hatched overlay marks missions that have an active drill running.
    ============================================================ */
-function GoalTimeline({ missions, habits, goalStart }) {
+function GoalTimeline({ missions, habits, goalStart, goalEnd }) {
     const [selected, setSelected] = useState(null);
     const dated = missions.filter((m) => m.start && m.end);
     if (dated.length === 0) {
@@ -1715,7 +1720,8 @@ function GoalTimeline({ missions, habits, goalStart }) {
     const starts = dated.map((m) => new Date(m.start + "T00:00:00").getTime());
     const ends = dated.map((m) => new Date(m.end + "T00:00:00").getTime());
     const min = Math.min(...starts, goalStart ? new Date(goalStart + "T00:00:00").getTime() : Infinity);
-    const max = Math.max(...ends);
+    const goalEndMs = goalEnd ? new Date(goalEnd + "T00:00:00").getTime() : null;
+    const max = Math.max(...ends, goalEndMs || -Infinity);
     const span = Math.max(1, max - min);
     const todayMs = new Date(isoDate(new Date()) + "T00:00:00").getTime();
     const todayPct = ((todayMs - min) / span) * 100;
@@ -1759,7 +1765,8 @@ function GoalTimeline({ missions, habits, goalStart }) {
                             border: active ? `2px solid ${OLIVE_DEEP}` : "none",
                         } }));
                 })))),
-                todayPct >= 0 && todayPct <= 100 && (React.createElement("div", { className: "absolute", style: { left: `${todayPct}%`, top: 0, bottom: 0, width: 2, background: RED, opacity: 0.75 } }))),
+                todayPct >= 0 && todayPct <= 100 && (React.createElement("div", { className: "absolute", style: { left: `${todayPct}%`, top: 0, bottom: 0, width: 2, background: RED, opacity: 0.75 } })),
+            goalEndMs && (React.createElement("div", { className: "absolute", style: { left: `${((goalEndMs - min) / span) * 100}%`, top: -4, bottom: -4, width: 3, background: GOLD_DEEP, borderRadius: 2 } }))),
             sel ? (React.createElement("div", { className: "mt-3 rounded-lg px-3 py-2.5", style: { background: KHAKI_LIGHT } },
                 React.createElement("div", { className: "text-[12.5px] font-semibold mb-1", style: { color: OLIVE_DEEP, fontFamily: FONT_DISPLAY } }, sel.name),
                 React.createElement("div", { className: "text-[11px] mb-0.5", style: { color: OLIVE, fontFamily: FONT_BODY } },
@@ -1773,7 +1780,7 @@ function GoalTimeline({ missions, habits, goalStart }) {
                 selDrills.length > 0 && (React.createElement("div", { className: "text-[10.5px] mt-1 flex items-center gap-1", style: { color: OLIVE_MID, fontFamily: FONT_BODY } },
                     React.createElement(Repeat, { size: 10 }),
                     " ",
-                    selDrills.map((d) => d.name).join(", "))))) : (React.createElement("div", { className: "text-[10.5px] mt-2.5 text-center", style: { color: TEXT_MUTED, fontFamily: FONT_BODY } }, "Tap a bar for detail \u00B7 hatched = has an active drill \u00B7 red line = today")))));
+                    selDrills.map((d) => d.name).join(", "))))) : (React.createElement("div", { className: "text-[10.5px] mt-2.5 text-center", style: { color: TEXT_MUTED, fontFamily: FONT_BODY } }, "Tap a bar \u00B7 hatched = active drill \u00B7 red = today \u00B7 gold = goal deadline")))));
 }
 function GoalDetailView({ goal, objectives, setObjectives, projects, setProjects, habits, setHabits, allWeeks, logStatus, setLogStatus, updateAnyWeek, currentWeekId, onBack }) {
     const [openMissionId, setOpenMissionId] = useState(null);
@@ -1820,7 +1827,10 @@ function GoalDetailView({ goal, objectives, setObjectives, projects, setProjects
     function setLogEntryStatus(entryId, status) { setLogStatus({ ...logStatus, [entryId]: { status } }); }
     return (React.createElement("div", { className: "pb-4" },
         React.createElement(BackHeader, { title: "Goal", onBack: onBack }),
-        React.createElement(GoalTimeline, { missions: myMissions, habits: habits, goalStart: goal.start }),
+        React.createElement(GoalTimeline, { missions: myMissions, habits: habits, goalStart: goal.start, goalEnd: goal.end }),
+            goal.end && myMissions.some((m) => m.end && m.end > goal.end) && (React.createElement("div", { className: "flex items-start gap-2 px-3.5 py-3 rounded-xl mb-4", style: { background: AMBER_LIGHT } },
+                React.createElement(AlertTriangle, { size: 14, color: "#7A5A12", style: { marginTop: 1, flexShrink: 0 } }),
+                React.createElement("div", { className: "text-[11.5px] leading-relaxed", style: { color: "#7A5A12", fontFamily: FONT_BODY } }, "A mission ends after this goal's deadline \u2014 either the plan or the deadline needs to move."))),
         React.createElement(Card, { className: "mb-4" },
             React.createElement("div", { className: "px-4 py-2.5", style: { background: OLIVE } },
                 React.createElement("span", { className: "text-[12.5px] font-semibold text-white", style: { fontFamily: FONT_DISPLAY } }, "Goal details")),
@@ -1833,6 +1843,8 @@ function GoalDetailView({ goal, objectives, setObjectives, projects, setProjects
                     PILLAR_OPTIONS.map((o) => React.createElement("option", { key: o, value: o }, o))),
                 React.createElement("div", { className: "text-[10.5px] mb-1", style: { color: TEXT_MUTED, fontFamily: FONT_BODY } }, "Start date"),
                 React.createElement(TextInput, { type: "date", value: goal.start || "", onChange: (e) => update({ start: e.target.value }), className: "border rounded-lg px-2.5 py-2 mb-3 bg-white", style: { borderColor: BORDER } }),
+                React.createElement("div", { className: "text-[10.5px] mb-1", style: { color: TEXT_MUTED, fontFamily: FONT_BODY } }, "Target date \u2014 the deadline for this outcome"),
+                React.createElement(TextInput, { type: "date", value: goal.end || "", onChange: (e) => update({ end: e.target.value }), className: "border rounded-lg px-2.5 py-2 mb-3 bg-white", style: { borderColor: BORDER } }),
                 React.createElement("div", { className: "text-[10.5px] mb-1", style: { color: TEXT_MUTED, fontFamily: FONT_BODY } }, "Status"),
                 React.createElement("select", { value: goal.status, onChange: (e) => update({ status: e.target.value }), className: "w-full text-[13px] outline-none border rounded-lg px-2.5 py-2 mb-3 bg-white", style: { borderColor: BORDER, color: TEXT_PRIMARY, fontFamily: FONT_BODY } }, OBJ_STATUSES.map((s) => React.createElement("option", { key: s }, s))),
                 React.createElement("div", { className: "text-[10.5px] mb-1", style: { color: TEXT_MUTED, fontFamily: FONT_BODY } }, "Priority"),
@@ -1935,7 +1947,7 @@ function GoalsView({ objectives, setObjectives, projects, setProjects, habits, s
     function addObjective() {
         const id = "o" + Date.now();
         setObjectives([...objectives, { id, pillar: "Wealth and Legacy", status: "Idea", priority: "Medium",
-                desc: "New goal", start: "", notes: "" }]);
+                desc: "New goal", start: "", end: "", notes: "" }]);
         setOpenGoal(id);
     }
     const statChips = OBJ_STATUSES.map((s) => ({ status: s, count: objectives.filter((o) => o.status === s).length }));
@@ -2131,7 +2143,7 @@ function LogActionEditor({ action, isNew, weekId, updateAnyWeek, objectives, set
             return;
         const id = "o" + Date.now();
         setObjectives([...objectives, { id, pillar: newGoal.pillar, status: "Active", priority: "Medium",
-                desc: newGoal.desc.trim(), start: newGoal.start || "", notes: "" }]);
+                desc: newGoal.desc.trim(), start: newGoal.start || "", end: newGoal.end || "", notes: "" }]);
         set({ goalId: id });
         setNewGoalOpen(false);
     }
